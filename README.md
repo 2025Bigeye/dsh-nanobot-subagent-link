@@ -1,8 +1,8 @@
-# 🐱 NanoBot子代理桥 (NanoBot Subagent Bridge)
+#  NanoBot子代理桥 (NanoBot Subagent Bridge)
 
 让 DeepSeek Harness (DSH) 把本机 **nanobot**（HKUDS 的超轻量 AI Agent）当作**子 Agent** 来运行。
 
-安装后，DSH 获得一个名为 **`nanobot_run`** 的模型工具：我可以把子任务直接派给 nanobot，取回它的最终回答——一次派多个就是"多 worker 并行打工"。
+安装后，DSH 获得一个名为 **`nanobot_run`** 的模型工具：可以把子任务直接派给 nanobot，取回它的最终回答
 
 ## 安装
 
