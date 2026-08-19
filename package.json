@@ -1,0 +1,44 @@
+{
+  "name": "dsh-tool-nanobot",
+  "description": "NanoBot子代理桥 (NanoBot Subagent Bridge) — lets DeepSeek Harness run the local nanobot AI agent (HKUDS/nanobot) as a subagent via a nanobot_run tool (oneshot CLI or persistent OpenAI-compatible server).",
+  "version": "0.4.0",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": {
+      "default": "./index.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "README.md",
+    "SKILL.md",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "^0.1.0",
+    "@deepseek-ai/dsh-shell": "^0.1.0",
+    "@deepseek-ai/dsh-sandbox-policy": "^0.1.0",
+    "@deepseek-ai/dsh-user-approval": "^0.1.0",
+    "@deepseek-ai/dsh-settings": "^0.1.0",
+    "@deepseek-ai/schemastery": "^3.18.0"
+  },
+  "keywords": [
+    "deepseek",
+    "harness",
+    "dsh",
+    "dsh-plugin",
+    "nanobot",
+    "agent",
+    "subagent"
+  ]
+}

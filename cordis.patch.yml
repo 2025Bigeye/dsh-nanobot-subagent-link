@@ -1,0 +1,6 @@
+# NanoBot子代理桥 — 注册 nanobot_run 工具行。
+# 当本包通过 `dsh plugin --profile <name> add dsh-tool-nanobot` 安装为 dsh profile
+# bundle 时，这个 patch 层会作为组合层被应用，从而挂载 tool-nanobot 插件行。
+- insert:
+    - id: tool-nanobot
+      name: 'dsh-tool-nanobot'

@@ -1,0 +1,22 @@
+{
+  "name": "dsh-tool-nanobot",
+  "description": "Lets DSH run the local nanobot AI agent as a subagent via the nanobot_run tool (oneshot CLI or persistent OpenAI-compatible server).",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": {
+      "default": "./index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "^0.1.0",
+    "@deepseek-ai/dsh-shell": "^0.1.0",
+    "@deepseek-ai/dsh-sandbox-policy": "^0.1.0",
+    "@deepseek-ai/dsh-user-approval": "^0.1.0",
+    "@deepseek-ai/dsh-settings": "^0.1.0",
+    "@deepseek-ai/schemastery": "^3.18.0"
+  }
+}
