@@ -18,6 +18,7 @@ const SERVER_RETRY_ATTEMPTS = 25 // API retry attempts while the server boots
 const SERVER_RETRY_INTERVAL_SEC = 1 // pause between server-API retries
 const SERVER_REQUEST_TIMEOUT_SEC = 110 // per-request timeout (under nanobot api.timeout=120s)
 const JSON_CONVERT_DEPTH = 20 // ConvertTo-Json -Depth for request/response
+const LOG_TAG = 'dsh-tool-nanobot' // shared log prefix
 
 export const name = 'dsh-tool-nanobot'
 export const inject = ['tools', 'skills']
@@ -167,7 +168,9 @@ export function apply(ctx) {
               // leaking the raw spawn/resolve failure to the caller.
               serverState.handle = null
               serverState.started = false
-              throw new Error('nanobot server failed to start via "' + String(cfg.serverStartCommand) + '": ' + (err && err.message ? err.message : String(err)))
+              const msg = 'nanobot server failed to start via "' + String(cfg.serverStartCommand) + '": ' + (err && err.message ? err.message : String(err))
+              console.error('[' + LOG_TAG + '] ' + msg)
+              throw new Error(msg)
             }
           })()
           try { await serverState.starting } finally { serverState.starting = null }
@@ -304,7 +307,7 @@ export function apply(ctx) {
     try {
       mdText = readFileSync(new URL('./SKILL.md', import.meta.url), 'utf8')
     } catch {
-      console.warn('[dsh-tool-nanobot] SKILL.md not found; nanobot-run skill not registered')
+      console.warn('[' + LOG_TAG + '] SKILL.md not found; nanobot-run skill not registered')
     }
     if (mdText !== null) {
       const fm = (mdText.match(/^---\r?\n([\s\S]*?)\r?\n---/) || [])[1] || ''
@@ -330,7 +333,7 @@ export function apply(ctx) {
       const description = folded('description')
       const whenToUse = folded('whenToUse')
       if (!description || !whenToUse) {
-        console.warn('[dsh-tool-nanobot] SKILL.md frontmatter missing description/whenToUse; nanobot-run skill not registered')
+        console.warn('[' + LOG_TAG + '] SKILL.md frontmatter missing description/whenToUse; nanobot-run skill not registered')
       } else {
         skills.register({
           name: 'nanobot-run',
@@ -347,7 +350,7 @@ export function apply(ctx) {
       }
     }
   } else {
-    console.warn('[dsh-tool-nanobot] skills service unavailable; nanobot-run skill not registered')
+    console.warn('[' + LOG_TAG + '] skills service unavailable; nanobot-run skill not registered')
   }
 }
 
