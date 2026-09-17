@@ -1,24 +1,35 @@
 {
   "name": "dsh-tool-nanobot",
-  "description": "NanoBot子代理桥 (NanoBot Subagent Bridge) — lets DeepSeek Harness run the local nanobot AI agent (HKUDS/nanobot) as a subagent via a nanobot_run tool (oneshot CLI or persistent OpenAI-compatible server).",
-  "version": "0.3.0",
+  "description": "NanoBot Subagent Bridge — lets DeepSeek Harness run the local nanobot AI agent (HKUDS/nanobot) as a subagent via a nanobot_run tool (oneshot CLI or persistent OpenAI-compatible server).",
+  "version": "0.4.1",
   "type": "module",
   "main": "index.js",
   "exports": {
     ".": {
       "default": "./index.js"
     },
+    "./SKILL.md": "./SKILL.md",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
   "files": [
     "index.js",
+    "SKILL.md",
     "cordis.patch.yml",
     "README.md",
-    "SKILL.md",
+    "README.zh.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/2025Bigeye/dsh-nanobot-subagent-link.git"
+  },
+  "homepage": "https://github.com/2025Bigeye/dsh-nanobot-subagent-link#readme",
+  "bugs": {
+    "url": "https://github.com/2025Bigeye/dsh-nanobot-subagent-link/issues"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -30,6 +41,7 @@
     "@deepseek-ai/dsh-sandbox-policy": "^0.1.0",
     "@deepseek-ai/dsh-user-approval": "^0.1.0",
     "@deepseek-ai/dsh-settings": "^0.1.0",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.0",
     "@deepseek-ai/schemastery": "^3.18.0"
   },
   "keywords": [
@@ -38,7 +50,8 @@
     "dsh",
     "dsh-plugin",
     "nanobot",
+    "subagent",
     "agent",
-    "subagent"
+    "bridge"
   ]
 }

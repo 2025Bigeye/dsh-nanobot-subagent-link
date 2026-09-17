@@ -6,6 +6,16 @@
 
 ## [0.4.1] - 2026-09-17
 
+### Added
+
+- **工具可发现性**：注册一段系统提示引导（`systemPrompt` section，order 106），说明 `nanobot_run` 的用途与适用场景。此前仅注册工具，新对话的模型没有任何线索，几乎不会主动使用它。
+- 英文 `README.md`（市场主 README）与中文 `README.zh.md` 双语。
+- 补齐市场规范所需的包元数据：`repository` / `homepage` / `bugs`，`exports` 增加 `./SKILL.md`，`files` 纳入 `CHANGELOG.md` 与双语 README。
+
+### Changed
+
+- 工具描述重写：把"何时使用"前置，精简实现细节噪声。
+
 ### Fixed
 
 - **server 模式中文乱码（严重）**：请求体改以 UTF-8 字节发送，并在 `Content-Type` 声明 `charset=utf-8`。此前 PowerShell 5.1 的 `Invoke-RestMethod -Body <字符串>` 默认按 Latin1 编码发送，中文提示词到达 nanobot 时已是乱码，导致它只能靠上下文猜测、答非所问。

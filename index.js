@@ -41,6 +41,17 @@ export function apply(ctx) {
   ctx.inject(['settings'], (sctx) => {
     sctx.settings.register(NS, SettingsSchema)
   })
+  // Discoverability: a registered tool alone gives a fresh conversation no cue
+  // that this capability exists, so the model rarely reaches for it. This
+  // section states what it is for and when it is worth using (tool-guidance
+  // sections use the 100-199 order band).
+  ctx.inject(['systemPrompt'], (spCtx) => {
+    spCtx.systemPrompt.section({
+      name: 'tool:nanobot',
+      order: 106,
+      text: 'nanobot_run hands one self-contained subtask to the local nanobot agent, which runs it with its own tools and context and returns only its final answer. Reach for it for hands-on, self-contained work (research, file edits, shell tasks) and to fan out several independent subtasks. It does not see this conversation, so put everything the task needs into the prompt.',
+    })
+  })
   const serverState = { started: false, handle: null, starting: null }
   // Always terminate a started nanobot serve process when this plugin tears down.
   ctx.effect(() => () => {
@@ -299,7 +310,7 @@ export function apply(ctx) {
 
   const tool = defineTool({
     name: 'nanobot_run',
-    description: 'Delegate a subtask to the local nanobot AI agent (HKUDS/nanobot) and return its final answer. Use this when a task should be handled by nanobot. Mode "oneshot" (default) runs `nanobot agent -m <prompt>`; mode "server" calls the running nanobot OpenAI-compatible server at <serverBaseUrl>/v1/chat/completions (auth key read from ~/.nanobot/config.json) and starts the server once if needed. Defaults are configured in DSH Settings (namespace "nanobot"); per-call overrides take precedence.',
+    description: 'Delegate a self-contained subtask to the local nanobot AI agent (HKUDS/nanobot) and return only its final answer. Reach for it to offload hands-on work (research, file edits, shell tasks) or to fan out several independent subtasks. nanobot runs with its own tools and does NOT see this conversation, so put everything the task needs into the prompt. Mode "oneshot" (default) runs a fresh `nanobot agent` per call; mode "server" uses a persistent OpenAI-compatible endpoint. Defaults come from DSH Settings (namespace "nanobot").',
     parameters: {
       prompt: { type: 'string', required: true, description: 'The task/prompt to send to nanobot.' },
       mode: { type: 'string', enum: ['oneshot', 'server'], description: 'Override the default invocation mode.' },

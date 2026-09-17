@@ -1,51 +1,63 @@
-#  NanoBot子代理桥 (NanoBot Subagent Bridge)
+# dsh-tool-nanobot · NanoBot Subagent Bridge
 
-（Work in Progress-正在积极开发中！新手开发不易！2026.08.18）
+> Run the local [nanobot](https://github.com/HKUDS/nanobot) AI agent as a **subagent** from DeepSeek Harness (DSH).
 
-让 DeepSeek Harness (DSH) 把本机 **nanobot**当作**子 Agent** 来运行。
+[![npm](https://img.shields.io/npm/v/dsh-tool-nanobot)](https://www.npmjs.com/package/dsh-tool-nanobot)
+[![license](https://img.shields.io/npm/l/dsh-tool-nanobot)](./LICENSE)
 
-安装后，DSH 获得一个名为 **`nanobot_run`** 的模型工具：可以把子任务直接派给 nanobot，取回它的最终回答
+Registers a **`nanobot_run`** tool: DSH hands one self-contained subtask to nanobot, which executes it with its own tools and context and returns **only its final answer**. The plugin also registers a `nanobot-run` runtime skill and a prompt section, so fresh conversations discover the capability.
 
-## 安装
+## Install
 
 ```sh
 dsh plugin --profile web add dsh-tool-nanobot
 ```
 
-重启 `dsh web` 后即可使用。需要 `dsh web >= 0.1.0-rc.6`。
+Restart `dsh web`, then use it. Requires `dsh web >= 0.1.0-rc.6` and a local `nanobot` CLI on `PATH`.
 
-## 用法
+## Usage
 
-由 DSH 自动调用 `nanobot_run`；也可显式指定模式：
+DSH calls `nanobot_run` automatically. Two invocation modes:
 
-- **`oneshot`**（默认）：每次任务运行 `nanobot agent -m <prompt>`（独立进程）。
-- **`server`**：调用常驻 `nanobot serve` 的 OpenAI 兼容 API（`/v1/chat/completions`），更快的多轮/并发；未运行时自动拉起。
+- **`oneshot`** (default) — runs `nanobot agent -m <prompt>` as an independent process per task (stateless, safest for unrelated tasks).
+- **`server`** — calls a persistent `nanobot serve` OpenAI-compatible endpoint (`/v1/chat/completions`); faster, and auto-started when not already running.
 
-## 配置（持久化于 DSH Settings）
+## Configuration (persisted in DSH Settings)
 
-在 **Settings → nanobot** 命名空间可配置：
+Namespace **`nanobot`** under Settings:
 
-| 字段 | 默认 | 说明 |
+| Field | Default | Description |
 |---|---|---|
-| `mode` | `oneshot` | 默认调用模式：`oneshot` / `server` |
-| `oneshotCommand` | `nanobot agent -m "{prompt}" --no-markdown` | oneshot 命令模板，须恰好包含一个 `{prompt}` 占位符 |
-| `serverBaseUrl` | `http://localhost:8900` | server 模式地址（仅允许 loopback） |
-| `serverStartCommand` | `nanobot serve` | 自动拉起 server 的命令 |
-| `serverModel` | *(空)* | 要发送的 model；留空则省略（服务器自动用配置模型） |
+| `mode` | `oneshot` | Default invocation mode: `oneshot` / `server` |
+| `oneshotCommand` | `nanobot agent -m "{prompt}" --no-markdown` | oneshot command template; must contain exactly one `{prompt}` placeholder |
+| `serverBaseUrl` | `http://localhost:8900` | server-mode address (loopback only) |
+| `serverStartCommand` | `nanobot serve` | command used to start the server |
+| `serverModel` | *(empty)* | model to send; empty omits it so the server uses its own configured model |
 
-## 安全说明
+## Security
 
-- 命令模板与 base URL **只来自可信的用户配置**，不接受模型可控参数（已移除 `command`/`baseUrl` 注入面）。
-- server 模式的地址强制 **loopback 白名单**，API key 不会被发送到非本机地址。
-- 支持按会话沙箱审批升级（`sandbox_permissions` + `justification`）。
-- 输出做截断，避免全量转储。
+- The command template and base URL come **only from trusted user settings** — there is no model-controllable command/URL injection surface.
+- server mode enforces a **loopback whitelist**; the API key is never sent off-host.
+- Sandbox-aware execution with approval-gated escalation (`sandbox_permissions` + `justification`).
+- Output is truncated, and a started server process is terminated when the plugin tears down.
 
-## 开发
+## Requirements
+
+- DeepSeek Harness `dsh web >= 0.1.0-rc.6`
+- A local [`nanobot`](https://github.com/HKUDS/nanobot) CLI (e.g. `uv tool install nanobot-ai`)
+- Windows: PowerShell, used by the shell service
+
+## Development
 
 ```sh
-git clone <your-repo> && cd dsh-tool-nanobot
-npm install   # 安装 peer 依赖以本地自测
+git clone https://github.com/2025Bigeye/dsh-nanobot-subagent-link.git
+cd dsh-nanobot-subagent-link
+npm install
 ```
+
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md).
 
 ## License
 
