@@ -87,6 +87,16 @@ export function apply(ctx) {
     return t.length > max ? t.slice(0, max) + '\n...[truncated]' : t
   }
 
+  // Classify a finished shell run so a timeout or an abort is reported as such
+  // instead of surfacing as a bare "exit 1 with no stderr".
+  function runFailureNote(result) {
+    if (result.timedOut) return 'timed out after ' + result.timeoutMs + 'ms'
+    if (result.aborted) return 'aborted (the tool call was cancelled)'
+    if (result.signal !== null && result.signal !== undefined) return 'killed by signal ' + String(result.signal)
+    if (result.exitCode === null) return 'process ended without an exit code'
+    return null
+  }
+
   // nanobot's oneshot stdout interleaves a model banner and '✻'-prefixed
   // reasoning with the final answer, and the launcher appends a '[stderr]'
   // section. Keep only the answer and split that stderr section out.
@@ -255,7 +265,13 @@ export function apply(ctx) {
         "if ($r.choices -and $r.choices[0].message) { $r.choices[0].message.content } else { $r | ConvertTo-Json -Depth " + JSON_CONVERT_DEPTH + " }",
       ].join('\n')
       const result = await shell.run(shell.resolve({ command: script, ...base }))
-      return { ok: result.exitCode === 0, exitCode: result.exitCode, output: truncate(result.stdout.text), stderr: truncate(result.stderr.text) }
+      const note = runFailureNote(result)
+      return {
+        ok: result.exitCode === 0,
+        exitCode: result.exitCode,
+        output: truncate(result.stdout.text),
+        stderr: truncate(note === null ? result.stderr.text : (note + (result.stderr.text ? '\n' + result.stderr.text : ''))),
+      }
     }
 
     // Robust prompt transport: base64-encode the prompt, then launch nanobot via
@@ -300,11 +316,13 @@ export function apply(ctx) {
     const result = await shell.run(shell.resolve({ command, ...base }))
     // Strip the banner/reasoning noise so the model sees only the answer.
     const cleaned = cleanOneshotOutput(result.stdout.text)
+    const note = runFailureNote(result)
+    const errText = cleaned.err || result.stderr.text
     return {
       ok: result.exitCode === 0,
       exitCode: result.exitCode,
       output: truncate(cleaned.text),
-      stderr: truncate(cleaned.err || result.stderr.text),
+      stderr: truncate(note === null ? errText : (note + (errText ? '\n' + errText : ''))),
     }
   }
 

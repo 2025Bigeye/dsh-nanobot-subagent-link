@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **失败原因不清晰**：插件此前忽略 shell 返回的 `timedOut` / `aborted` / `signal` 字段，超时或取消时只显示 `nanobot failed (exit 1): (no stderr)`，无法判断真实原因。新增失败分类，现在会明确报告 `timed out after Nms` / `aborted (the tool call was cancelled)` / `killed by signal X` / `process ended without an exit code`。
+
 ## [0.4.1] - 2026-09-17
 
 ### Added
