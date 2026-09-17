@@ -76,6 +76,29 @@ export function apply(ctx) {
     return t.length > max ? t.slice(0, max) + '\n...[truncated]' : t
   }
 
+  // nanobot's oneshot stdout interleaves a model banner and '✻'-prefixed
+  // reasoning with the final answer, and the launcher appends a '[stderr]'
+  // section. Keep only the answer and split that stderr section out.
+  function cleanOneshotOutput(raw) {
+    let t = String(raw ?? '')
+    let errPart = ''
+    const marker = t.indexOf('[stderr]')
+    if (marker !== -1) {
+      errPart = t.slice(marker + '[stderr]'.length).trim()
+      t = t.slice(0, marker)
+    }
+    const lines = t.split(/\r?\n/)
+    let start = 0
+    while (start < lines.length && /^\s*(👀|🐈)/.test(lines[start])) start++
+    // The answer follows the last '✻' reasoning line.
+    let lastThink = -1
+    for (let i = start; i < lines.length; i++) {
+      if (/^\s*✻/.test(lines[i])) lastThink = i
+    }
+    const body = lines.slice(lastThink + 1).join('\n').trim()
+    return { text: body.length > 0 ? body : lines.slice(start).join('\n').trim(), err: errPart }
+  }
+
   // Read the resolved configuration from DSH settings, falling back to defaults.
   function readConfig() {
     const settings = ctx.get('settings')
@@ -182,22 +205,30 @@ export function apply(ctx) {
       if (!isLoopback(baseUrl)) throw new Error('nanobot serverBaseUrl must be a loopback http URL (localhost/127.0.0.1/::1)')
       const model = String(cfg.serverModel)
       const u = baseUrl + '/v1/chat/completions'
+      // Isolate each call in its own nanobot session: without an explicit
+      // session_id the server files every request under one shared session and
+      // earlier conversations bleed into new, unrelated tasks.
+      const sessionId = 'dsh-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8)
       const script = [
         "$ErrorActionPreference='Stop'",
         '$p=' + psQuote(prompt),
         '$u=' + psQuote(u),
         '$m=' + psQuote(model),
+        '$sid=' + psQuote(sessionId),
         "$cfgPath=Join-Path $env:USERPROFILE '.nanobot\\config.json'",
         "$apiKey=''",
         'if (Test-Path $cfgPath) { $nb=Get-Content $cfgPath -Raw | ConvertFrom-Json; if ($nb.api -and $nb.api.apiKey) { $apiKey=[string]$nb.api.apiKey } }',
         "$headers=@{}",
         'if ($apiKey) { $headers["Authorization"]="Bearer "+$apiKey }',
-        "if ($m) { $body=@{model=$m;messages=@(@{role='user';content=$p})} } else { $body=@{messages=@(@{role='user';content=$p})} }",
+        "if ($m) { $body=@{model=$m;session_id=$sid;messages=@(@{role='user';content=$p})} } else { $body=@{session_id=$sid;messages=@(@{role='user';content=$p})} }",
         '$body=$body|ConvertTo-Json -Depth ' + JSON_CONVERT_DEPTH + ' -Compress',
+        // PowerShell 5.1 sends a string body as Latin1, corrupting non-ASCII
+        // (e.g. Chinese) prompts; send UTF-8 bytes with an explicit charset.
+        '$bodyBytes=[System.Text.Encoding]::UTF8.GetBytes($body)',
         "$lastErr=''",
         'for ($i=0; $i -lt ' + SERVER_RETRY_ATTEMPTS + '; $i++) {',
         '  try {',
-        "    $r=Invoke-RestMethod -Uri $u -Method Post -ContentType 'application/json' -Headers $headers -Body $body -TimeoutSec " + SERVER_REQUEST_TIMEOUT_SEC,
+        "    $r=Invoke-RestMethod -Uri $u -Method Post -ContentType 'application/json; charset=utf-8' -Headers $headers -Body $bodyBytes -TimeoutSec " + SERVER_REQUEST_TIMEOUT_SEC,
         '    break',
         '  } catch {',
         '    $resp=$_.Exception.Response',
@@ -256,7 +287,14 @@ export function apply(ctx) {
     ].join('\n')
     const command = script
     const result = await shell.run(shell.resolve({ command, ...base }))
-    return { ok: result.exitCode === 0, exitCode: result.exitCode, output: truncate(result.stdout.text), stderr: truncate(result.stderr.text) }
+    // Strip the banner/reasoning noise so the model sees only the answer.
+    const cleaned = cleanOneshotOutput(result.stdout.text)
+    return {
+      ok: result.exitCode === 0,
+      exitCode: result.exitCode,
+      output: truncate(cleaned.text),
+      stderr: truncate(cleaned.err || result.stderr.text),
+    }
   }
 
   const tool = defineTool({
