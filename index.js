@@ -11,6 +11,14 @@ import { settingsNamespace } from '@deepseek-ai/dsh-settings'
 import { readFileSync } from 'node:fs'
 import z from '@deepseek-ai/schemastery'
 
+// Tuning constants — centralized so they're easy to find and adjust.
+const DEFAULT_TIMEOUT_MS = 300000 // default nanobot call timeout (5 minutes)
+const MAX_OUTPUT_CHARS = 20000 // stdout/stderr truncation cap
+const SERVER_RETRY_ATTEMPTS = 25 // API retry attempts while the server boots
+const SERVER_RETRY_INTERVAL_SEC = 1 // pause between server-API retries
+const SERVER_REQUEST_TIMEOUT_SEC = 110 // per-request timeout (under nanobot api.timeout=120s)
+const JSON_CONVERT_DEPTH = 20 // ConvertTo-Json -Depth for request/response
+
 export const name = 'dsh-tool-nanobot'
 export const inject = ['tools', 'skills']
 
@@ -62,7 +70,7 @@ export function apply(ctx) {
     try { u = new URL(url) } catch { return false }
     return u.protocol === 'http:' && ['localhost', '127.0.0.1', '::1', '[::1]'].includes(u.hostname)
   }
-  function truncate(text, max = 20000) {
+  function truncate(text, max = MAX_OUTPUT_CHARS) {
     const t = String(text ?? '')
     return t.length > max ? t.slice(0, max) + '\n...[truncated]' : t
   }
@@ -130,7 +138,7 @@ export function apply(ctx) {
     const prompt = String(a.prompt ?? '')
     if (!prompt.trim()) throw new Error('prompt is required')
     const mode = a.mode === 'server' ? 'server' : a.mode === 'oneshot' ? 'oneshot' : cfg.mode
-    const timeoutMs = typeof a.timeoutMs === 'number' ? a.timeoutMs : 300000
+    const timeoutMs = typeof a.timeoutMs === 'number' ? a.timeoutMs : DEFAULT_TIMEOUT_MS
     const policy = await resolvePolicy(a, exec)
     const base = {
       timeoutMs,
@@ -174,11 +182,11 @@ export function apply(ctx) {
         "$headers=@{}",
         'if ($apiKey) { $headers["Authorization"]="Bearer "+$apiKey }',
         "if ($m) { $body=@{model=$m;messages=@(@{role='user';content=$p})} } else { $body=@{messages=@(@{role='user';content=$p})} }",
-        '$body=$body|ConvertTo-Json -Depth 20 -Compress',
+        '$body=$body|ConvertTo-Json -Depth ' + JSON_CONVERT_DEPTH + ' -Compress',
         "$lastErr=''",
-        'for ($i=0; $i -lt 25; $i++) {',
+        'for ($i=0; $i -lt ' + SERVER_RETRY_ATTEMPTS + '; $i++) {',
         '  try {',
-        "    $r=Invoke-RestMethod -Uri $u -Method Post -ContentType 'application/json' -Headers $headers -Body $body -TimeoutSec 110",
+        "    $r=Invoke-RestMethod -Uri $u -Method Post -ContentType 'application/json' -Headers $headers -Body $body -TimeoutSec " + SERVER_REQUEST_TIMEOUT_SEC,
         '    break',
         '  } catch {',
         '    $resp=$_.Exception.Response',
@@ -187,11 +195,11 @@ export function apply(ctx) {
         // 4xx = bad request (model/key/etc) — fail fast with an actionable error.
         '    if ($status -ge 400 -and $status -lt 500) { Write-Error \"nanobot API rejected the request (HTTP $status): $lastErr\"; exit 1 }',
         // connection refused / 5xx — server still starting or overloaded; retry.
-        '    if ($i -eq 24) { Write-Error \"nanobot server not reachable at $u after retries: $lastErr\"; exit 1 }',
-        '    Start-Sleep -Seconds 1',
+        '    if ($i -eq ' + (SERVER_RETRY_ATTEMPTS - 1) + ') { Write-Error \"nanobot server not reachable at $u after retries: $lastErr\"; exit 1 }',
+        '    Start-Sleep -Seconds ' + SERVER_RETRY_INTERVAL_SEC,
         '  }',
         '}',
-        "if ($r.choices -and $r.choices[0].message) { $r.choices[0].message.content } else { $r | ConvertTo-Json -Depth 20 }",
+        "if ($r.choices -and $r.choices[0].message) { $r.choices[0].message.content } else { $r | ConvertTo-Json -Depth " + JSON_CONVERT_DEPTH + " }",
       ].join('\n')
       const result = await shell.run(shell.resolve({ command: script, ...base }))
       return { ok: result.exitCode === 0, exitCode: result.exitCode, output: truncate(result.stdout.text), stderr: truncate(result.stderr.text) }
@@ -246,7 +254,7 @@ export function apply(ctx) {
     parameters: {
       prompt: { type: 'string', required: true, description: 'The task/prompt to send to nanobot.' },
       mode: { type: 'string', enum: ['oneshot', 'server'], description: 'Override the default invocation mode.' },
-      timeoutMs: { type: 'number', description: 'Timeout in milliseconds for the nanobot call (default 300000).' },
+      timeoutMs: { type: 'number', description: 'Timeout in milliseconds for the nanobot call (default ' + DEFAULT_TIMEOUT_MS + ').' },
       sandbox_permissions: { type: 'string', enum: ['workspace-write', 'danger-full-access'], description: 'Wider sandbox mode for the nanobot command; requires justification and user approval.' },
       justification: { type: 'string', description: 'Required with sandbox_permissions: one sentence explaining why the nanobot command needs the wider access.' },
     },
