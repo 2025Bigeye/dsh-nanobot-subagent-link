@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-09-17
+
+### Fixed
+
+- **server 模式中文乱码（严重）**：请求体改以 UTF-8 字节发送，并在 `Content-Type` 声明 `charset=utf-8`。此前 PowerShell 5.1 的 `Invoke-RestMethod -Body <字符串>` 默认按 Latin1 编码发送，中文提示词到达 nanobot 时已是乱码，导致它只能靠上下文猜测、答非所问。
+- **server 模式会话污染**：每次调用传入独立的 `session_id`。此前不传该字段时，全部请求都落在 server 的同一个默认会话里，历史对话会串入新的、无关的任务。
+- **oneshot 输出噪音**：剥离 `👀` 模型横幅与 `✻` 前缀的推理行，只保留最终答案；并把启动器追加的 `[stderr]` 段从 stdout 分离到 `stderr` 字段。
+
 ## [0.4.0] - 2026-09-17
 
 ### Changed
