@@ -159,8 +159,16 @@ export function apply(ctx) {
           await serverState.starting
         } else {
           serverState.starting = (async () => {
-            serverState.handle = shell.start(shell.resolve({ command: cfg.serverStartCommand, ...(policy ? { sandboxPolicy: policy } : {}) }))
-            serverState.started = true
+            try {
+              serverState.handle = shell.start(shell.resolve({ command: cfg.serverStartCommand, ...(policy ? { sandboxPolicy: policy } : {}) }))
+              serverState.started = true
+            } catch (err) {
+              // Roll back state and surface a clear, actionable error instead of
+              // leaking the raw spawn/resolve failure to the caller.
+              serverState.handle = null
+              serverState.started = false
+              throw new Error('nanobot server failed to start via "' + String(cfg.serverStartCommand) + '": ' + (err && err.message ? err.message : String(err)))
+            }
           })()
           try { await serverState.starting } finally { serverState.starting = null }
         }
